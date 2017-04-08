@@ -18,7 +18,7 @@ class conv():
             for j in range(0, img.shape[3], self.stride[1]):
                 if j + self.kernel_shape[1] > img.shape[3]:
                     break
-                data.append(img[:,:,i:i+self.kernel_shape[0],j:j+self.kernel_shape[1]].reshape((img.shape[0],-1)))
+                data.append(img[:,:,i:i+self.kernel_shape[0],j:j+self.kernel_shape[1]])
         data = np.array(data).transpose((1,0,2))
         return data
 
@@ -30,6 +30,7 @@ class conv():
             kernel = np.random.uniform(-1,1,(kernel_size, self.out_channel))/np.sqrt(kernel_size)
             self.kernel = kernel
             bias = np.zeros((1, self.out_channel))
+            self.bias = bias
         else:
             kernel=self.kernel
             bias = self.bias
@@ -39,13 +40,27 @@ class conv():
 
     def backprop(self, img, delta, lr):
         data = self.transfor(img)
-        tmp = delta.reshape(img.shape[0], -1, self.out_channel).transpose(0,2,1)
-        grad_kernel = data.transpose(0,2,1) @ delta
-        grad_bias = delta.mean(axis = 0)
-        inp_delta = (delta @ self.kernel.T).reshape(img.shape)
+        grad_bias = delta.mean(axis = (0,2,3))
+        """
+        grad_kernel = (data.transpose(0,2,1) @ tmp).mean(axis=0)
+        inp_delta = (tmp @ self.kernel.T).transpose((1,0,2))
+        inp_delta = inp_delta.reshape(inp_delta.shape[0], inp_delta.shape[1], self.inp_channel, self.kernel_shape[0], self.kernel_shape[1])
+        out = np.zeros(img.shape)
+        count = 0
+        """
+        delta_inp = np.zeros_like(img)
+        grad_kernel = np.zeros_like(self.kernel)
+        for i in range(delta.shape[2]):
+            for j in range(delta.shape[3]):
+                x_window = img[:,:,i*self.stride[0]:i*self.stride[0]+self.kernel_shape[0], j*self.stride[1]:j*self.stride[1]+self.kernel_shape[1]]
+                for f in range(self.out_channel):
+                    grad_kernel[:,f] += (x_window * delta[:,f:f+1,i:i+1,j:j+1]).sum(axis=(0,2,3)).reshape(-1)
+                    delta_inp[:,:,i*self.stride[0]:i*self.stride[0]+self.kernel_shape[0],j*self.stride[1]:j*self.stride[1]+self.kernel_shape[1]] += self.kernel[:,f].reshape(1,1,self.kernel_shape[0], self.kernel_shape[1]) * delta[:,f:f+1,i:i+1,j:j+1]
+        
+        grad_kernel /= img.shape[0]
         self.kernel -= lr * grad_kernel
         self.bias -= lr * grad_bias
-        return inp_delta
+        return delta_inp.mean(axis=0)
 
 
 class fc():
@@ -72,3 +87,26 @@ class fc():
         self.weights -= lr * grad_weights
         self.bias -= lr * grad_bias
         return inp_delta
+
+class pooling():
+    def __init__(self, kernel_shape, stride, mode):
+        self.kernel_shape = kernel_shape
+        self.stride = stride
+        self.mode = mode
+
+    def forward(self, imgs):
+        data = []
+        for i in range(0, imgs.shape[2], self.stride[0]):
+            if i + self.kernel_shape[0] > imgs.shape[2]:
+                break
+            for j in range(0, imgs.shape[3], self.stride[1]):
+                if j + self.kernel_shape[1] > imgs.shape[3]:
+                    break
+                data.append(imgs[:,:,i:i+self.kernel_shape[0], j:j+self.kernel_shape[1]].reshape((imgs.shape[0], imgs.shape[1], -1)))
+            data = np.array(data).transpose((1,2,0,3))
+            if self.mode == 'max':
+                re = np.max(data, axis=3)
+            elif self.mode == 'avg':
+                re = np.mean(data, axis = 3)
+            re = re.reshape((imgs.shape[0], imgs.shape[1], (imgs.shape[2]-self.kernel_shape[0])//stride[0]+1, (imgs.shape[3]-kernel_shape[1])//stride[1]+1))
+            return re
