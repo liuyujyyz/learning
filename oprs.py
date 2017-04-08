@@ -1,7 +1,31 @@
 import numpy as np
 import cv2
 
-class conv():
+class Sigmoid():
+    def __init__(self):
+        pass
+
+    def forward(self, inputs):
+        e = np.exp(inputs)
+        return 1 - 1.0/(1+e)
+
+    def backprop(self, inputs, delta):
+        e = np.exp(inputs)
+        sig = 1 - 1.0/(1+e)
+        return sig*(1-sig)*delta
+
+class Tanh():
+    def __init__(self):
+        pass
+
+    def forward(self, inputs):
+        return np.tanh(inputs)
+
+    def backprop(self, inputs, delta):
+        return (1-np.tanh(inputs)**2)*delta
+
+class Conv():
+    #ref : http://blog.csdn.net/l_b_yuan/article/details/64927643
     def __init__(self, inp_channel, out_channel, kernel_shape, stride, kernel_weights = None, bias_weights = None):
         self.kernel_shape = kernel_shape
         self.stride = stride
@@ -63,7 +87,7 @@ class conv():
         return delta_inp.mean(axis=0)
 
 
-class fc():
+class FC():
     def __init__(self, inp_size, out_size, weights = None, bias = None):
         self.inp_size = inp_size
         self.out_size = out_size
@@ -88,7 +112,7 @@ class fc():
         self.bias -= lr * grad_bias
         return inp_delta
 
-class pooling():
+class Pooling():
     def __init__(self, kernel_shape, stride, mode):
         self.kernel_shape = kernel_shape
         self.stride = stride
