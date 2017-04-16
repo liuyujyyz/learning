@@ -1,69 +1,104 @@
 import pickle
-from oprs import FC, Conv, Tanh, Sigmoid
+from oprs import *
+from monitor import MonitorWriter
 import numpy as np
+import argparse
+from dataprovider import *
+import os
 
-a = pickle.load(open('../MNIST_data/mnist.pkl','rb'), encoding='latin1')
-train, valid, test = a
-train_img, train_label = train
-valid_img, valid_label = valid
-test_img, test_label = test
-"""
-train_img = train_img.reshape(50000,1,28,28)
-valid_img = valid_img.reshape(10000,1,28,28)
-test_img = test_img.reshape(10000,1,28,28)
-"""
-num_examples = train_img.shape[0]
-input_dims = train_img.shape[1]
-output_dims = 10
-epsilon = 1 
-hidden_dims = 100
+def make_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-o', help = 'output files directory', default = 'logs')
+    parser.add_argument('-c', help = 'file name continued from', default = None)
+    parser.add_argument('-m', help = 'monitor name', default = None)
+    parser.add_argument('-l', help = 'learning rate', type = float, default = 1e-3)
+    return parser
 
-conv1 = Conv(1, 3, (3,3), (1,1))
-act = Tanh()
-fc1 = FC(input_dims, hidden_dims)
-fc2 = FC(hidden_dims, output_dims)
-
-def sample(_bs):
-    idx = np.random.choice(np.array(range(50000)),_bs)
-    noise = np.random.normal(0,1e-4,(_bs, input_dims))
-    return train_img[idx]+noise, train_label[idx]
-
-def acc(img, label):
-    #d = conv1.forward(img)
-    #e = d.reshape(d.shape[0], -1)
-    z1 = fc1.forward(img)
-    z2 = fc2.forward(z1)
-    scores = np.exp(z2)
-    probs = scores / np.sum(scores)
-    pred = np.argmax(probs, axis=1)
-    error = (np.array(label) == pred).mean()
-    return error
-
-prev_acc = 0.0
-bs = 10000
-for i in range(1000000):
-    sample_img, sample_label = sample(bs)
-    z1 = fc1.forward(sample_img)
-    a1 = act.forward(z1)
-    z2 = fc2.forward(a1)
-    z2 = z2 - np.max(z2, axis=1, keepdims=True)
-    exp_scores = np.exp(z2)
-    probs = exp_scores/np.sum(exp_scores, axis=1, keepdims=True)
-
-    delta3 = probs
-    delta3[range(bs), np.array(sample_label)] -= 1
-    delta2 = fc2.backprop(a1, delta3, epsilon)
-    delta22 = act.backprop(z1, delta2)
-    delta1 = fc1.backprop(sample_img, delta2, epsilon)
+def main():
+    parser = make_parser()
+    args = parser.parse_args()
     
-    acc1 = acc(valid_img[:1024], valid_label[:1024])
-    acc0 = acc(sample_img, sample_label)
-    print(i, epsilon, 'train:{}, valid:{}'.format(acc0, acc1))
-    if acc1 - prev_acc < 1e-6:
-        epsilon *= 0.9
-    if epsilon < 1e-4:
-        break
-    prev_acc = acc1
+    writer = MonitorWriter(args.m)
+    dp = MNIST(with_label = False)
+    if not os.path.exists(args.o):
+        os.system('mkdir '+args.o)
+    input_dims = 28 * 28
+    hidden_dims = 128
+    code_len = 32
+    act = Sigmoid()
+    if args.c:
+        W = pickle.load(open(args.c,'rb'))
+        start = W['step']
+        fc1 = FC('fc1', input_dims, hidden_dims,W=W['fc1:W'], b=W['fc1:b'])
+        fc2 = FC('fc2', hidden_dims, code_len, W=W['fc2:W'], b=W['fc2:b'])
+        fc3 = FC('fc3', code_len, hidden_dims,W=W['fc3:W'],b=W['fc3:b'])
+        fc4 = FC('fc4', hidden_dims, input_dims,W=W['fc4:W'],b=W['fc4:b'])
+    else:
+        start = 0
+        fc1 = FC('fc1', input_dims, hidden_dims)
+        fc2 = FC('fc2', hidden_dims, code_len)
+        fc3 = FC('fc3', code_len, hidden_dims)
+        fc4 = FC('fc4', hidden_dims, input_dims)
 
-acc2 = acc(test_img, test_label)
-print(acc2)
+    def dist(img):
+        z1 = fc1(img)
+        a1 = act(z1)
+        z2 = fc2(a1)
+        a2 = act(z2)
+        code = a2
+        z3 = fc3(a2)
+        a3 = act(z3)
+        z4 = fc4(a3)
+        a4 = act(z4)
+        return ((img - a4)**2).sum()/img.shape[0], a4
+
+    bs = 1024
+    iter_ = dp.train(bs)
+    valid_img = dp.valid()
+    lr = args.l
+    for j in range(100000):
+        i = j + start
+        sample_img = next(iter_)
+
+        z1 = fc1(sample_img)
+        a1 = act(z1)
+        z2 = fc2(a1)
+        a2 = act(z2)
+        code = a2
+        z3 = fc3(a2)
+        a3 = act(z3)
+        z4 = fc4(a3)
+        a4 = act(z4)
+        loss = ((a4 - sample_img)**2).sum(axis=1).mean() 
+       
+        writer.add_value('train_loss', loss, i)
+
+        delta_a4 = 2 * (a4 - sample_img)
+        delta_z4 = act.backprop(z4, delta_a4)
+        delta_a3 = fc4.backprop(a3, delta_z4, lr)
+        delta_z3 = act.backprop(z3, delta_a3)
+        delta_a2 = fc3.backprop(a2, delta_z3, lr)
+        delta_z2 = act.backprop(z2, delta_a2)
+        delta_a1 = fc2.backprop(a1, delta_z2, lr)
+        delta_z1 = act.backprop(z1, delta_a1)
+        delta_inp = fc1.backprop(sample_img, delta_z1, lr)
+
+        if i % 100 == 0:
+            pickle.dump({
+                'step': i, 
+                'fc1:W':fc1.W, 'fc1:b':fc1.b,
+                'fc2:W':fc2.W, 'fc2:b':fc2.b,
+                'fc3:W':fc3.W, 'fc3:b':fc3.b,
+                'fc4:W':fc4.W, 'fc4:b':fc4.b}, 
+                open(args.o + '/net.pkl','wb'))
+            acc1, oup = dist(valid_img)
+            writer.add_value('valie_loss', acc1, i // 100)
+            canvas = np.concatenate([np.concatenate(p, axis = 0) for p in oup[:100].reshape(10, 10 , 28, 28, 1)], axis = 1)
+            writer.add_image('gen_img', canvas, i//100)
+            canvas = np.concatenate([np.concatenate(p, axis = 0) for p in valid_img[:100].reshape(10, 10 , 28, 28, 1)], axis = 1)
+            writer.add_image('read_img', canvas, i//100)
+    acc2 = acc(test_img)
+    print(acc2)
+
+if __name__ == '__main__':
+    main()
