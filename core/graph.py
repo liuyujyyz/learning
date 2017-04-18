@@ -1,3 +1,4 @@
+import pickle
 from oprs import *
 #oprs dict name:[inputs, outputs, type, params]
 #params list name
@@ -32,19 +33,24 @@ class edge():
         q = [nodes[f].value for f in self.input]
         return self.func(q)
 
-    def bp(self, nodes, lr):
+    def bp(self, nodes, lr, weight_decay):
         q = [nodes[f].value for f in self.input]
-        L = self.func.backprop(q, nodes[self.output].delta, lr)
+        L = self.func.backprop(q, nodes[self.output].delta, lr, weight_decay)
         for i in range(len(self.input)):
             nodes[self.input[i]].delta += L[i]
 
 
 class graph():
-    def __init__(self, net_graph, debug = False):
+    def __init__(self, debug = False):
         self.nodes = {}
+        self.edges = {}
+        self.loss_var = {}
+        self.debug = debug
+        self.step = 0
+
+    def construct(self, net_graph):
         for key in net_graph['params']:
             self.nodes[key] = node(key)
-        self.edges = {}
         for key in net_graph['oprs']:
             data = net_graph['oprs'][key]
             self.edges[key] = edge(key, **data)
@@ -54,7 +60,6 @@ class graph():
         self.loss_var = self.nodes[net_graph['loss_var']]
         for u in self.nodes:
             self.nodes[u].show()
-        self.debug = debug
 
     def load(self, filename):
         data = pickle.load(open(filename, 'rb'))
@@ -80,7 +85,7 @@ class graph():
                     M.remove(opr)
         print(self.loss_var.value)
 
-    def backprop(self, lr):
+    def backprop(self, lr, weight_decay = 0):
         count = {}
         for key in self.nodes:
             self.nodes[key].delta = 0
@@ -93,7 +98,7 @@ class graph():
                 if count[outname] == len(self.nodes[outname].outputs):
                     if self.debug:
                         print(opr)
-                    self.edges[opr].bp(self.nodes, lr)
+                    self.edges[opr].bp(self.nodes, lr, weight_decay)
                     for inname in self.edges[opr].input:
                         count[inname] += 1
                     M.remove(opr)

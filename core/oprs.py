@@ -9,7 +9,7 @@ class Sum(MultiOprs):
         A = inputs[0]
         return A.sum()
 
-    def backprop(self, inputs, delta, lr):
+    def backprop(self, inputs, delta, lr,weight_decay):
         A = inputs[0]
         return [np.ones(A.shape)]
 
@@ -18,7 +18,7 @@ class Add(MultiOprs):
         A, B = inputs
         return A + B
 
-    def backprop(self, inputs, delta, lr):
+    def backprop(self, inputs, delta, lr,weight_decay):
         return [delta, delta]
 
 class Sub(MultiOprs):
@@ -26,7 +26,7 @@ class Sub(MultiOprs):
         A, B = inputs
         return A - B
 
-    def backprop(self, inputs, delta, lr):
+    def backprop(self, inputs, delta, lr,weight_decay):
         return [delta, -delta]
 
 class Mul(MultiOprs):
@@ -34,7 +34,7 @@ class Mul(MultiOprs):
         A, B = inputs
         return A * B
 
-    def backprop(self, inputs, delta, lr):
+    def backprop(self, inputs, delta, lr,weight_decay):
         A, B = inputs
         return [delta * B, delta * A]
 
@@ -43,7 +43,7 @@ class Div(MultiOprs):
         A, B = inputs
         return A / B
 
-    def backprop(self, inputs, delta, lr):
+    def backprop(self, inputs, delta, lr,weight_decay):
         A, B = inputs
         return [delta / B, - delta * A / (B**2)]
 
@@ -52,7 +52,7 @@ class Exp(MultiOprs):
         _ = inputs[0]
         return np.exp(_)
 
-    def backprop(self, inputs, delta, lr):
+    def backprop(self, inputs, delta, lr,weight_decay):
         _ = inputs[0]
         return [delta * np.exp(_)]
 
@@ -75,7 +75,7 @@ class Reshape(MultiOprs):
         else:
             assert False, 'shape not match'
 
-    def backprop(self, inputs, delta, lr):
+    def backprop(self, inputs, delta, lr,weight_decay):
         return [delta.reshape(inputs[0].shape)]
 
 class Pow():
@@ -88,7 +88,7 @@ class Pow():
         _ = inputs[0]
         return _ ** self.k
 
-    def backprop(self, inputs, delta, lr):
+    def backprop(self, inputs, delta, lr,weight_decay):
         _ = inputs[0]
         return [self.k * delta * (_ ** (self.k - 1))]
 
@@ -101,7 +101,7 @@ class Concat():
     def __call__(self, inputs):
         return np.concatenate(inputs, axis = self.axis)
 
-    def backprop(self, inputs, delta, lr):
+    def backprop(self, inputs, delta, lr,weight_decay):
         re = []
         shift = np.moveaxis(delta, self.axis, 0)
         start = 0
@@ -117,7 +117,7 @@ class ReLU(MultiOprs):
         re[re < 0] = 0
         return re
 
-    def backprop(self, inputs, delta, lr):
+    def backprop(self, inputs, delta, lr,weight_decay):
         _ = inputs[0]
         re = delta * ((_ > 0).astype('int'))
         return [re]
@@ -127,7 +127,7 @@ class Sigmoid(MultiOprs):
         e = np.exp(inputs[0])
         return 1 - 1.0/(1+e)
 
-    def backprop(self, inputs, delta, lr):
+    def backprop(self, inputs, delta, lr,weight_decay):
         e = np.exp(inputs[0])
         sig = 1 - 1.0/(1+e)
         return [sig*(1-sig)*delta]
@@ -136,7 +136,7 @@ class Tanh(MultiOprs):
     def __call__(self, inputs):
         return np.tanh(inputs[0])
 
-    def backprop(self, inputs, delta, lr):
+    def backprop(self, inputs, delta, lr,weight_decay):
         return [(1-np.tanh(inputs[0])**2)*delta]
 
 
@@ -158,10 +158,12 @@ class FC():
     def __call__(self, inputs):
         return inputs[0]@self.W + self.b
 
-    def backprop(self, inputs, delta, lr):
+    def backprop(self, inputs, delta, lr,weight_decay):
         grad_weights = inputs[0].T @ delta / inputs[0].shape[0]
-        grad_bias = delta.mean(axis = 0)
+        grad_bias = delta.mean(axis = 0, keepdims = True)
         inp_delta = delta @ self.W.T
+        grad_weights += weight_decay * self.W
+        grad_bias += weight_decay * self.b
         self.W -= lr * grad_weights
         self.b -= lr * grad_bias
         return [inp_delta]
@@ -205,7 +207,7 @@ class Conv():
             out[:,f,:,:] += self.b[f]
         return out
 
-    def backprop(self, inputs, delta, lr):
+    def backprop(self, inputs, delta, lr,weight_decay):
         img = inputs[0]
         N,F,H1,W1 = delta.shape
         N,C,H,W = img.shape
@@ -226,8 +228,12 @@ class Conv():
                     dw[f:f+1] += (x_window * delta[:,f:f+1,i:i+1,j:j+1]).sum(axis=0)
                     dx_pad[:,:,i*SH:i*SH+HH,j*SW:j*SW+WW] += self.W[f:f+1] * delta[:,f:f+1,i:i+1,j:j+1]
         delta_in = dx_pad[:,:,PH:PH+H,PW:PW+W]
-        self.W -= lr * dw / N
-        self.b -= lr * db / N
+        dw /= N
+        dw += weight_decay * self.W
+        db /= N
+        db += weight_decay * self.b
+        self.W -= lr * dw
+        self.b -= lr * db
         return [delta_in]
 
 
@@ -256,7 +262,7 @@ class Pooling():
         re = re.reshape((imgs.shape[0], imgs.shape[1], (imgs.shape[2]-self.kernel_shape[0])//self.stride[0]+1, (imgs.shape[3]-self.kernel_shape[1])//self.stride[1]+1))
         return re
 
-    def backprop(self, inputs, delta, lr):
+    def backprop(self, inputs, delta, lr,weight_decay):
         #Not Implemented
         pass
 

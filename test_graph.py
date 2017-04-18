@@ -31,18 +31,18 @@ NB.set_time_stamp(start)
 net = NB.get_desc()
 G = graph(net, debug = False)
 #writer = MonitorWriter('test_graph')
-#dp = MNIST(with_label = False)
+dp = MNIST(with_label = False)
 
-#valid_img = dp.valid()
+valid_img = dp.valid()
 train_img = np.ones((1024, 28*28))
-for i in range(10):
+for i in range(100):
     G.forward(data = {'a0':train_img})
     G.backprop(0.001)
 
 G.forward(data = {'a0':np.ones((100,28*28))})
-#canvas = np.concatenate([np.concatenate(p, axis = 0) for p in oup.reshape(10, 10 , 28, 28, 1)], axis = 1)
-#writer.add_image('gen_img', canvas, 0)
+canvas = np.concatenate([np.concatenate(p, axis = 0) for p in oup.reshape(10, 10 , 28, 28, 1)], axis = 1)
+writer.add_image('gen_img', canvas, 0)
 
-#canvas = np.concatenate([np.concatenate(p, axis = 0) for p in valid_img[:100].reshape(10, 10 , 28, 28, 1)], axis = 1)
-#writer.add_image('read_img', canvas, 0)
+canvas = np.concatenate([np.concatenate(p, axis = 0) for p in valid_img[:100].reshape(10, 10 , 28, 28, 1)], axis = 1)
+writer.add_image('read_img', canvas, 0)
 
