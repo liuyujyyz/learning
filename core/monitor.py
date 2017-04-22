@@ -7,9 +7,13 @@ class MonitorWriter(object):
         if filename is None:
             filename = time.time()
         self.writer = tf.summary.FileWriter('../data/' + str(filename))
+        self.count = 0
 
     def add_value(self, tag, value, step):
         self.writer.add_summary(tf.summary.Summary(value=[tf.Summary.Value(tag=tag, simple_value=value)]), global_step = step)
+        self.count += 1
+        if self.count % 10 == 0:
+            self.writer.flush()
 
     def add_image(self, tag, value, step=None):
         if isinstance(value, str):
@@ -19,5 +23,8 @@ class MonitorWriter(object):
                 value = (value * 256).astype('uint8')
             cv2.imwrite('/tmp/a.jpg', value)
             self.writer.add_summary(tf.summary.Summary(value=[tf.Summary.Value(tag=tag, image=tf.Summary.Image(encoded_image_string = open('/tmp/a.jpg','rb').read()))]), global_step=step)
+        self.count += 1
+        if self.count % 10 == 0:
+            self.writer.flush()
 
 

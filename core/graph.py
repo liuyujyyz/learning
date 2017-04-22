@@ -60,15 +60,17 @@ class graph():
         self.loss_var = self.nodes[net_graph['loss_var']]
         for u in self.nodes:
             self.nodes[u].show()
+        self.step = net_graph['time_stamp']
 
     def load(self, filename):
         data = pickle.load(open(filename, 'rb'))
         self.nodes = data['nodes']
         self.edges = data['edges']
         self.loss_var = data['loss_var']
+        self.step = data['step']
 
     def save(self, filename):
-        pickle.dump({'nodes':self.nodes, 'edges':self.edges, 'loss_var':self.loss_var}, open(filename, 'wb'))
+        pickle.dump({'step':self.step, 'nodes':self.nodes, 'edges':self.edges, 'loss_var':self.loss_var}, open(filename, 'wb'))
         
     def forward(self, data):
         M = list(self.edges.keys())
@@ -80,10 +82,11 @@ class graph():
         while M:
             for opr in M:
                 if self.edges[opr].valid(self.nodes):
+                    if self.debug:
+                        print(opr)
                     val = self.edges[opr].fw(self.nodes)
                     self.nodes[self.edges[opr].output].value = val
                     M.remove(opr)
-        print(self.loss_var.value)
 
     def backprop(self, lr, weight_decay = 0):
         count = {}
@@ -102,6 +105,7 @@ class graph():
                     for inname in self.edges[opr].input:
                         count[inname] += 1
                     M.remove(opr)
+        self.step += 1
 
 class NetworkBuilder():
     def __init__(self, name = 'HAHA'):

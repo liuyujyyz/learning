@@ -168,6 +168,43 @@ class FC():
         self.b -= lr * grad_bias
         return [inp_delta]
 
+class UpSampling():
+    def __init__(self, name, scale = (1,1)):
+        self.name = name
+        self.scale = scale
+
+    def __call__(self, inputs):
+        N,C,H,W = inputs[0].shape
+        NH = int(self.scale[0] * H)
+        NW = int(self.scale[1] * W)
+        img = np.zeros((N,C,H+1,W+1))
+        img[:,:,:-1,:-1] = inputs[0]
+        out = np.zeros((N,C,NH,NW))
+        for i in range(NH):
+            for j in range(NW):
+                pi = int(i / self.scale[0])# i = pi * l + (pi+1)*(1-l) = (pi+1) - l
+                pj = int(j / self.scale[1])
+                li = pi + 1 - i
+                lj = pj + 1 - j
+                out[:,:,i,j] = (img[:,:,pi,pj] * li + img[:,:,pi+1,pj]*(1-li))*lj + (img[:,:,pi,pj+1]*li + img[:,:,pi+1,pj+1]*(1-li))*(1-lj)
+        return out
+
+    def backprop(self, inputs, delta, lr, weight_decay):
+        img = inputs[0]
+        N,C,H,W = img.shape
+        NH, NW = delta.shape[2:]
+        delta_in = np.zeros((N,C,H+1,W+1))
+        for i in range(NH):
+            for j in range(NW):
+                pi = int(i/self.scale[0])
+                pj = int(j/self.scale[1])
+                li = pi+1-i
+                lj = pj+1-j
+                delta_in[:,:,pi,pj] += delta[:,:,i,j] * li * lj
+                delta_in[:,:,pi+1,pj] += delta[:,:,i,j] * (1 - li) * lj
+                delta_in[:,:,pi, pj+1] += delta[:,:,i,j] * li*(1-lj)
+                delta_in[:,:,pi+1,pj+1] += delta[:,:,i,j] * (1-li)*(1-lj)
+        return [delta_in[:,:,:-1,:-1]]
 
 class Conv():
     #ref : http://blog.csdn.net/l_b_yuan/article/details/64927643
@@ -266,8 +303,18 @@ class Pooling():
         #Not Implemented
         pass
 
+class CrossEntropy(MultiOprs):
+    def __call__(self, inputs):
+        pred, label = inputs
+        pred = np.exp(pred - pred.max(axis=1, keepdims=True))
+        pred = pred / pred.sum(axis = 1, keepdims = True)
+        return (-np.log(pred) * label).mean()
 
-
-func_dict = {'SUM':Sum, 'ADD': Add, 'SUB': Sub, 'MUL':Mul, 'DIV': Div, 'CONV': Conv, 'FC': FC, 'POOL': Pooling, 'CONCAT': Concat, 'EXP': Exp, 'POW': Pow, 'RELU': ReLU, 'SIGMOID': Sigmoid, 'TANH': Tanh, 'RESHAPE':Reshape,}
+    def backprop(self, inputs, delta, lr, weight_decay):
+        pred, label = inputs
+        pred = pred - label
+        return [pred, np.zeros_like(label)]
+        
+func_dict = {'SUM':Sum, 'ADD': Add, 'SUB': Sub, 'MUL':Mul, 'DIV': Div, 'CONV': Conv, 'FC': FC, 'POOL': Pooling, 'CONCAT': Concat, 'EXP': Exp, 'POW': Pow, 'RELU': ReLU, 'SIGMOID': Sigmoid, 'TANH': Tanh, 'RESHAPE':Reshape,'US':UpSampling, 'BCE': CrossEntropy, }
 
 
