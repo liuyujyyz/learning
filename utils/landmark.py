@@ -43,10 +43,7 @@ if __name__ == '__main__':
         result[item] = pnt
     
     path = args.target.split('/')
-    if path[-1] == '':
-        name = path[-2]
-    else:
-        name = path[-1]
+    name = '_'.join(path)
     pickle.dump(result, open('%s.pkl'%name,'wb'))
     cv2.destroyAllWindows()
         

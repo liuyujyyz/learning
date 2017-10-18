@@ -1,4 +1,5 @@
 #python2
+import argparse
 import os, sys
 import pickle
 import numpy as np
@@ -19,7 +20,10 @@ def click_and_loc(event, x, y, flags, param):
         cv2.imshow('image', image)
 
 if __name__ == '__main__':
-    target = sys.argv[-1]
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-t', '--target')
+    args = parser.parse_args()
+    target = args.target
     cv2.namedWindow('image')
     cv2.setMouseCallback('image', click_and_loc)
 
@@ -36,7 +40,7 @@ if __name__ == '__main__':
         cv2.waitKey(0)
         result[item] = pnt
 
-    pickle.dump(result, open('%s.pkl'%(target.split('/')[-1]),'wb'))
+    pickle.dump(result, open('%s.pkl'%('_'.join(target.split('/'))),'wb'))
     cv2.destroyAllWindows()
         
 
