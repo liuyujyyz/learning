@@ -34,12 +34,15 @@ def crawler(keyword, name):
         
         s=p.findall(html)
         
-        if os.path.isdir("./%s"%name)!=True:
-            os.makedirs('./%s'%name)
-	for i in tqdm(s):
-	    i=i.replace("thumbURL\":\"","")
-	    urllib.request.urlretrieve(i,"./{kw}/pic{num}.jpg".format(kw=name,num=j))
-	    j+=1
+        if os.path.isdir("/home/liuyu/Documents/learning/data/%s"%name)!=True:
+            os.makedirs('/home/liuyu/Documents/learning/data/%s'%name)
+        for i in tqdm(s):
+            i=i.replace("thumbURL\":\"","")
+            try:
+                urllib.request.urlretrieve(i,"/home/liuyu/Documents/learning/data/{kw}/pic{num}.jpg".format(kw=name,num=j))
+                j+=1
+            except:
+                continue
 
 if __name__ == '__main__':
     for idx, item in enumerate(['暹罗猫','布偶猫','苏格兰折耳猫','英国短毛猫','波斯猫','俄罗斯蓝猫','美国短毛猫',\
