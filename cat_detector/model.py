@@ -13,9 +13,8 @@ class OwnModel(torch.nn.Module):
         self.conv = [torch.nn.Conv2d(kernel_size = 3, stride = 2, padding = 1, out_channels=chans[i+1], in_channels=chans[i]) for i in range(5)]
         self.bn = [torch.nn.BatchNorm2d(chans[i+1]) for i in range(5)]
         
-        self.outfc = torch.nn.Linear(chans[5]*2*2, 128)
-#        self.outfc = torch.nn.Linear(3*64*64, 128)
-        self.clser = torch.nn.Linear(128, 2)
+        self.outfc = torch.nn.Conv2d(kernel_size = 2, stride= 1, padding=0, in_channels=chans[5], out_channels=128)
+        self.clser = torch.nn.Conv2d(kernel_size = 1, stride= 1, padding=0, in_channels=128, out_channels=2)
         self.softmax = torch.nn.Softmax()
         self.tanh = torch.nn.Tanh()
         self.relu = torch.nn.ReLU()
@@ -24,10 +23,7 @@ class OwnModel(torch.nn.Module):
     def forward(self, x):
         for i in range(5):
             x = self.bn[i](self.tanh(self.conv[i](x)))
-            #x = self.bn[i](self.tanh(self.conv[i](x)))
-#            print(x.data.numpy().shape)
-        q = x.contiguous().view(-1, self.chans[5]*2*2)
-        q = self.relu(self.outfc(q))
+        q = self.relu(self.outfc(x))
         y = self.softmax(self.clser(q))
-        return q, y
+        return y
 

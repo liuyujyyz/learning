@@ -16,11 +16,8 @@ def crawler(keyword, name):
     while n < 100:
         n+=30
         url1=url.format(word=keyword,pageNum=str(n))
-
         rep=urllib.request.Request(url1,headers=header)
-        
         rep=urllib.request.urlopen(rep)
-        
         try:
             html=rep.read().decode("utf-8")
         except:
@@ -31,9 +28,7 @@ def crawler(keyword, name):
         #正则匹配，你需要的资源都是在 像这样的里面
         #"thumbURL":"https://ss1.bdstatic.com/70cFvXSh_Q1YnxGkpoWK1HF6hhy/it/u=3734503404,179583637&fm=23&gp=0.jpg"
         p=re.compile("thumbURL.*?\.jpg")
-        
         s=p.findall(html)
-        
         if os.path.isdir("/home/liuyu/Documents/learning/data/%s"%name)!=True:
             os.makedirs('/home/liuyu/Documents/learning/data/%s'%name)
         for i in tqdm(s):

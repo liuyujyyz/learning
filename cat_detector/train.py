@@ -13,6 +13,11 @@ from data_provider import DataProvider
 
 
 def train(args):
+    if os.path.isdir('./train_log'):
+        continue
+    else:
+        os.system('mkdir ./train_log')
+
     if args.cont:
         try:
             model = torch.load(args.cont)
@@ -23,28 +28,20 @@ def train(args):
         model = OwnModel()
     dp = DataProvider()
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
+    crit = torch.nn.CrossEntropyLoss()
     mbsize = 128
     for epoch in tqdm(range(args.max_iter)):
         for minibatch in tqdm(range(50)):
-            odata = dp.train_iter(mbsize)
+            odata, olabel = dp.train_iter(mbsize)
             data = Variable(torch.from_numpy(odata))
-            feature, label = model(data)
-            mean = feature.mean(1)
-            loss1 = ((feature-mean.expand_as(feature))**2).mean(1).mean()
-            mean = label.mean(0)
-            loss2 = ((label - mean.expand_as(label))**2).mean()
-            loss = 0 - loss1 - loss2
+            label = Variable(torch.from_numpy(olabel))
+            pred = model(data)
+            pred = pred.contiguous().view(-1,2)
+            loss = crit(pred, label)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            if minibatch == 0:
-                y = label.data.numpy()
-                y = np.argmax(y, axis=1)
-                for i in range(20):
-                    img = odata[i].transpose(1,2,0)
-                    pred = y[i]
-                    cv2.imwrite('./tmp/%s_%s.jpg'%(i,pred), img)
-        torch.save(model, 'model.pkl')
+        torch.save(model, './train_log/model.pkl')
 
 
 if __name__ == '__main__':
