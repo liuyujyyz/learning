@@ -32,17 +32,17 @@ if __name__ == '__main__':
     p,d,f = L
     for item in f:
         img = cv2.imread(os.path.join(p,item))
-        image = img.copy()
         if img is None:
             continue
+        image = img.copy()
         pnt = []
         cv2.imshow('image', img)
         cv2.waitKey(0)
         result[os.path.join(p,item)] = pnt
  
     path = args.target.split('/')
-    name = '_'.join(path)
-    pickle.dump(result, open('/home/liuyu/Documents/learning/data/%s.pkl'%name,'wb'))
+    name = '__'.join(path[-3:])
+    pickle.dump(result, open('../data/%s.pkl'%name,'wb'))
     cv2.destroyAllWindows()
         
 

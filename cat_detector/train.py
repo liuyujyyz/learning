@@ -28,18 +28,19 @@ def train(args):
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
     crit = torch.nn.CrossEntropyLoss()
     mbsize = 128
-    for epoch in tqdm(range(args.max_iter)):
-        for minibatch in tqdm(range(50)):
-            odata, olabel = dp.train_iter(mbsize)
-            data = Variable(torch.from_numpy(odata))
-            label = Variable(torch.from_numpy(olabel))
-            pred = model(data)
-            pred = pred.contiguous().view(-1,2)
-            loss = crit(pred, label)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-        torch.save(model, './%s/model.pkl'%args.output)
+    for epoch in range(args.max_iter):
+        odata, olabel = dp.train_iter(mbsize)
+        data = Variable(torch.from_numpy(odata))
+        label = Variable(torch.from_numpy(olabel))
+        pred = model(data)
+        pred = pred.contiguous().view(-1,2)
+        loss = crit(pred, label)
+        #optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        print('iter:%s loss:%s'%(epoch, loss.data.numpy()), end='\r')
+        if epoch % 10 == 0:
+            torch.save(model, './%s/model.pkl'%args.output)
 
 
 if __name__ == '__main__':
