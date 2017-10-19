@@ -13,10 +13,8 @@ from data_provider import DataProvider
 
 
 def train(args):
-    if os.path.isdir('./train_log'):
-        continue
-    else:
-        os.system('mkdir ./train_log')
+    if not os.path.isdir('./%s'%args.output):
+        os.system('mkdir ./%s'%args.output)
 
     if args.cont:
         try:
@@ -26,7 +24,7 @@ def train(args):
             model = OwnModel()
     else:
         model = OwnModel()
-    dp = DataProvider()
+    dp = DataProvider(args.dataset)
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
     crit = torch.nn.CrossEntropyLoss()
     mbsize = 128
@@ -41,7 +39,7 @@ def train(args):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-        torch.save(model, './train_log/model.pkl')
+        torch.save(model, './%s/model.pkl'%args.output)
 
 
 if __name__ == '__main__':
@@ -50,6 +48,8 @@ if __name__ == '__main__':
     parser.add_argument('--lr', default=0.1, type=float)
     parser.add_argument('--max-iter', default=100, type=int)
     parser.add_argument('--cont', default=None)
+    parser.add_argument('--dataset')
+    parser.add_argument('-o', '--output', default='train_log')
     args = parser.parse_args()
 
     train(args)

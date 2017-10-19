@@ -15,7 +15,7 @@ class OwnModel(torch.nn.Module):
         
         self.outfc = torch.nn.Conv2d(kernel_size = 2, stride= 1, padding=0, in_channels=chans[5], out_channels=128)
         self.clser = torch.nn.Conv2d(kernel_size = 1, stride= 1, padding=0, in_channels=128, out_channels=2)
-        self.softmax = torch.nn.Softmax()
+        self.softmax = torch.nn.Softmax2d()
         self.tanh = torch.nn.Tanh()
         self.relu = torch.nn.ReLU()
         self.chans = chans

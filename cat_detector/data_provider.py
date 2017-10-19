@@ -50,6 +50,7 @@ class DataProvider():
 
     def train_iter(self, mbsize):
         re = []
+        L = []
         while len(re) < mbsize:
             idx = np.random.randint(self.size)
             img = cv2.imread(self.imgs[idx])
@@ -57,9 +58,11 @@ class DataProvider():
             pos, neg = self.crop(img, bbox)
             if not(pos is None):
                 re.append(pos)
-            if not(neg is None):
+                L.append(1)
+            if not(neg is None) and np.sum(L)*3 > len(L):
                 re.append(neg)
-        return np.array(re[:mbsize]).transpose(0,3,1,2).astype('float32')
+                L.append(0)
+        return np.array(re[:mbsize]).transpose(0,3,1,2).astype('float32'), np.array(L[:mbsize])
 
 
 
