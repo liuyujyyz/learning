@@ -40,7 +40,7 @@ if __name__ == '__main__':
         pnt = []
         cv2.imshow('image', img)
         cv2.waitKey(0)
-        result[item] = pnt
+        result[os.path.join(p,item)] = pnt
     
     path = args.target.split('/')
     name = '_'.join(path)

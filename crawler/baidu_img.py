@@ -1,8 +1,11 @@
 import urllib.request
 import urllib.parse
+import json
 import re
 import os
 from tqdm import tqdm
+import argparse
+dataset = ''
 header={
      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36',
      "referer":"https://image.baidu.com"
@@ -29,17 +32,25 @@ def crawler(keyword, name):
         #"thumbURL":"https://ss1.bdstatic.com/70cFvXSh_Q1YnxGkpoWK1HF6hhy/it/u=3734503404,179583637&fm=23&gp=0.jpg"
         p=re.compile("thumbURL.*?\.jpg")
         s=p.findall(html)
-        if os.path.isdir("/home/liuyu/Documents/learning/data/%s"%name)!=True:
-            os.makedirs('/home/liuyu/Documents/learning/data/%s'%name)
+        if os.path.isdir("../data/%s/%s"%(dataset,name))!=True:
+            os.makedirs('../data/%s/%s'%(dataset,name))
         for i in tqdm(s):
             i=i.replace("thumbURL\":\"","")
             try:
-                urllib.request.urlretrieve(i,"/home/liuyu/Documents/learning/data/{kw}/pic{num}.jpg".format(kw=name,num=j))
+                urllib.request.urlretrieve(i,"../data/{ds}/{kw}/pic{num}.jpg".format(ds=dataset,kw=name,num=j))
                 j+=1
             except:
                 continue
 
 if __name__ == '__main__':
+    dataset = 'gaoqing'
+    if os.path.isdir('../data/%s'%dataset) != True:
+        os.makedirs('../data/%s'%dataset)
+    subset = ['gaoqing']
+    for idx, item in enumerate(subset):
+        crawler(item, idx)
+
+    """
     for idx, item in enumerate(['暹罗猫','布偶猫','苏格兰折耳猫','英国短毛猫','波斯猫','俄罗斯蓝猫','美国短毛猫',\
               '异国短毛猫','挪威森林猫','孟买猫','缅因猫','埃及猫','伯曼猫','斯芬克斯猫',\
              '缅甸猫','阿比西尼亚猫','新加坡猫','索马里猫','土耳其梵猫','中国狸花猫',\
@@ -47,3 +58,4 @@ if __name__ == '__main__':
               '东奇尼猫','柯尼斯卷毛猫','马恩岛猫','奥西猫','沙特尔猫','德文卷毛猫','美国刚毛猫',\
              '呵叻猫','重点色短毛猫','哈瓦那棕猫','塞尔凯克卷毛猫','波米拉猫','拉邦猫','东方猫','美国卷毛猫','欧洲缅甸猫']):
         crawler(item, idx)
+    """
