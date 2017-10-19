@@ -26,7 +26,7 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--target')
     args = parser.parse_args()
     N = args.num_of_ld
-    cv2.namedWindow('image')
+    cv2.namedWindow('image', cv2.WINDOW_NORMAL)
     cv2.setMouseCallback('image', click_and_loc)
 
     result = {}
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     
     path = args.target.split('/')
     name = '_'.join(path)
-    pickle.dump(result, open('%s.pkl'%name,'wb'))
+    pickle.dump(result, open('/home/liuyu/Documents/learning/data/%s.pkl'%name,'wb'))
     cv2.destroyAllWindows()
         
 
