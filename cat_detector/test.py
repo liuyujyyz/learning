@@ -28,10 +28,12 @@ for item in f:
                 q = Variable(torch.from_numpy(fimg))
                 out = model(q)
                 out = out.data.numpy()[0,1,0,0]
-                if out > args.thr:
-                    re.append([tmp, out])
+                if out < args.thr:
+                    re.append([(i/qimg.shape[0]*img.shape[0],j/qimg.shape[1]*img.shape[1]), ((i+64)/qimg.shape[0]*img.shape[0], (j+64)/qimg.shape[1]*img.shape[1]), out])
     re.sort(key=lambda x:x[1])
-    for i in range(10):
-        tmp = re[-1-i][0]
-        cv2.imshow('x', tmp)
-        cv2.waitKey(0)
+    print(len(re))
+    for item in re:
+        s,t,_ = item
+        cv2.rectangle(img, (int(s[1]), int(s[0])), (int(t[1]), int(t[0])), (0,0,255), 2)
+    cv2.imshow('x', img)
+    cv2.waitKey(0)
