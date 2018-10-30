@@ -2,7 +2,6 @@ import numpy as np
 from decorators import timer
 from tqdm import tqdm
 
-
 class UnionFind:
     def __init__(self, n):
         self.id = [i for i in range(n)]

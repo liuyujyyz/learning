@@ -1,5 +1,6 @@
 import numpy as np
 from time import time
+from decorators import timer
 
 class Distribution():
     def __init__(self, supp, prob):
@@ -63,14 +64,27 @@ class Distribution():
     def entropy(self):
         return -(self.prob * np.log(self.prob)).sum()
 
+class UniformSampler:
+    def __init__(self, N):
+        self.list = list(range(N))
+        self.size = N
+
+    @timer
+    def sample(self, m):
+        if m > self.size:
+            return None 
+        c = self.size
+        out = []
+        for i in range(m):
+            idx = np.random.randint(c)
+            out.append(self.list[idx])
+            self.list[idx] = self.list[c-1]
+            self.list[c-1] = out[-1]
+            c -= 1
+        return out
+
 if __name__ == '__main__':
-    N_sample = 100000
-    for L in [10, 100, 1000, 10000]:
-        dist = Distribution(np.random.randint(0,L*100,(L,)), np.random.uniform(0,1,(L,)))
-        print(dist.entropy())
-        start = time()    
-        q = dist.sample(N_sample)
-        print((time() - start) / (N_sample))
-        unique, counts = np.unique(q, return_counts=True)
-        m = Distribution(unique, counts)
-        print(m.entropy())
+    a = UniformSampler(100)
+    b = a.sample(5)
+    a = UniformSampler(10000000)
+    b = a.sample(500000)
