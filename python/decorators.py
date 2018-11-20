@@ -2,6 +2,15 @@ import time
 import functools
 import numpy as np
 
+def repeat(num=0):
+    def timer(func):
+        def wrapper(*args, **kargs):
+            print('test %s'%num)
+            return func(*args, **kargs)
+        return wrapper
+    return timer
+
+
 def timer(func):
     @functools.wraps(func)
     def fuck(*args, **kargs):
