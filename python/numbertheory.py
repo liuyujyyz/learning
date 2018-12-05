@@ -2,6 +2,10 @@ import numpy as np
 from time import time 
 from decorators import timer
 
+class Numbers:
+    def __init__(self):
+        self.primes = []
+
 def is_prime(n, plist = None):
     if n == 1:
         return False
