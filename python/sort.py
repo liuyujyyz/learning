@@ -11,36 +11,25 @@ def bubble(a):
                 a[j] = tmp
     return a
             
-@timer 
-def qs_p(a):
-    return qs(a)
+@timer
+def qs_p2(a):
+    return qs_fast(a, 0, len(a)-1)
 
-def qs(a, thr = 6):
-    L = len(a)
-    if L < thr:
-        return bubble(a)
-    idx = np.random.randint(L)
-    prev = []
-    post = []
-    base = a[idx]
-    for i in range(L):
-        num = a[i]
-        if i == idx:
-            continue
-        if num < base:
-            prev.append(num)
-        elif num > base:
-            post.append(num)
-        else:
-            if i < idx:
-                prev.append(num)
-            else:
-                post.append(num)
-    if len(prev) > 1:
-        prev = qs(prev, thr)
-    if len(post) > 1:
-        post = qs(post, thr)
-    return prev + [base] + post
+def partition(arr, L, H):
+    i = L - 1
+    pivot = arr[H]
+    for j in range(L, H):
+        if arr[j] <= pivot:
+            i = i + 1
+            arr[i], arr[j] = arr[j], arr[i]
+    arr[i+1], arr[H] = arr[H], arr[i+1]
+    return i + 1
+
+def qs_fast(arr, L, H):
+    if L < H:
+        pi = partition(arr, L, H)
+        qs_fast(arr, L, pi-1)
+        qs_fast(arr, pi+1, H)
 
 def merge(a, b):
     re = []
@@ -83,10 +72,8 @@ def npsort(a):
     return b
 
 if __name__ == '__main__':
-    for l in [100,1000,10000,100000]:
-        base = l * np.log(l)
+    for l in [100000]:
         a = list(np.random.uniform(0, 100, (l,)))
         e = npsort(a)
-        b = qs_p(a)
+        qs_p2(a)
         c = ms(a)
-        # d = bubble(a)

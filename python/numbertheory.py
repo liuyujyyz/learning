@@ -1,10 +1,13 @@
 import numpy as np
 from time import time 
+from decorators import timer
 
-def is_prime(n):
+def is_prime(n, plist = None):
     if n == 1:
         return False
-    for i in range(n):
+    if plist is None:
+        plist = range(n)
+    for i in plist:
         if i * i > n:
             break
         if i <= 1:
@@ -13,14 +16,16 @@ def is_prime(n):
             return False
     return True
 
+@timer
 def get_all_primes_v2(n):
     # O(n^1.5)
     primes = []
     for i in range(2,n):
-        if is_prime(i):
+        if is_prime(i, primes):
             primes.append(i)
     return primes
 
+@timer
 def get_all_primes(n):
     # O(n loglog n)
     free = np.zeros((n,), dtype='uint8')
@@ -45,6 +50,7 @@ def get_num_of_divisor(n):
         re *= (item + 1)
     return re
 
+@timer
 def factory(n):
     assert n >= 2
     pr = int(np.sqrt(n))
@@ -76,4 +82,6 @@ def choose(a, b):
     return re
 
 if __name__ == '__main__':
-    pass
+    for i in range(2, 33):
+        a = factory(2**i-1)
+        print(i, a)

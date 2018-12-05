@@ -1,6 +1,7 @@
 import time
 import functools
 import numpy as np
+import os
 
 def repeat(num=0):
     def timer(func):
@@ -18,7 +19,8 @@ def timer(func):
         re = func(*args, **kargs)
         b = time.time()
         c = b - a
-        print('%s cost time %s' % (func.__name__, c))
+        if os.getenv('DEBUG', 0):
+            print('%s cost time %s' % (func.__name__, c))
         return re
     return fuck
 
