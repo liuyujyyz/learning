@@ -4,76 +4,62 @@ from decorators import timer
 
 class Numbers:
     def __init__(self):
-        self.primes = []
+        self.primes = [2]
+        self.maximum = 2
 
-def is_prime(n, plist = None):
-    if n == 1:
-        return False
-    if plist is None:
-        plist = range(n)
-    for i in plist:
-        if i * i > n:
-            break
-        if i <= 1:
-            continue
-        if n % i == 0:
-            return False
-    return True
+    def is_prime(self, n):
+        self.extend(n)
+        return (n in self.primes)
 
-@timer
-def get_all_primes_v2(n):
-    # O(n^1.5)
-    primes = []
-    for i in range(2,n):
-        if is_prime(i, primes):
-            primes.append(i)
-    return primes
+    def extend(self, n):
+        if n <= self.maximum:
+            return
+        free = np.zeros((n-self.maximum,), dtype='uint8') # 0 - max+1, n-max-1 - n
+        for p in self.primes:
+            st = (self.maximum // p + 1) * p
+            for i in range(st, n+1, p):
+                free[i-(self.maximum+1)] = 1
+        idx = 0
+        while idx < n-self.maximum:
+            if free[idx]:
+                idx += 1
+                continue
+            p = idx + self.maximum + 1
+            self.primes.append(p)
+            for i in range(idx, n-self.maximum, p):
+                free[i] = 1
+        self.maximum = n
+        return
 
-@timer
-def get_all_primes(n):
-    # O(n loglog n)
-    free = np.zeros((n,), dtype='uint8')
-    primes = []
-    free[0] = 1
-    free[1] = 1
-    idx = 2
-    while idx < n:
-        if free[idx]:
-            idx += 1
-            continue
-        p = idx
-        primes.append(p)
-        for i in range(p, n, p):
-            free[i] = 1
-    return primes
+    def get_num_of_divisor(self, n):
+        div, power = self.factory(n)
+        re = 1
+        for item in power:
+            re *= (item + 1)
+        return re
 
-def get_num_of_divisor(n):
-    div, power = factory(n)
-    re = 1
-    for item in power:
-        re *= (item + 1)
-    return re
+    def factory(self, n):
+        if n < 2:
+            return None
+        pr = int(np.sqrt(n))
+        if pr + 1 > self.maximum:
+            self.extend(pr + 1)
+        pdivisor = []
+        power = []
+        for item in self.primes:
+            m = 0
+            while n % item == 0:
+                n = n // item
+                m += 1
+            if m > 0:
+                power.append(m)
+                pdivisor.append(item)
+        if n > 1:
+            pdivisor.append(n)
+            power.append(1)
+        return (pdivisor, power)
 
-@timer
-def factory(n):
-    assert n >= 2
-    pr = int(np.sqrt(n))
-    primes = get_all_primes(pr+1)
-    pdivisor = []
-    power = []
-    for item in primes:
-        m = 0
-        while n % item == 0:
-            n = n // item
-            m += 1
-        if m > 0:
-            power.append(m)
-            pdivisor.append(item)
-    if n > 1:
-        pdivisor.append(n)
-        power.append(1)
-    return (pdivisor, power)
-
+@timer 
 def choose(a, b):
     re = 1
     if a < b:
@@ -86,6 +72,4 @@ def choose(a, b):
     return re
 
 if __name__ == '__main__':
-    for i in range(2, 33):
-        a = factory(2**i-1)
-        print(i, a)
+    pass
