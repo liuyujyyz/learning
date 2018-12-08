@@ -1,11 +1,22 @@
 import cv2
-from image_process import edge_det, DCT
+from image_process import edge_det, DCT, rowDelta 
 import numpy as np 
+import os
 
 def asInt8(img):
     img[img < 0] = 0
     img[img > 255] = 255
     return img.astype('uint8')
+
+def init_base(shape):
+    tmp = np.zeros(shape, dtype=int)
+    for i in range(11):
+        img = cv2.imread('../data/frame%s.jpg'%i)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        tmp += img
+    tmp = tmp / 11.0
+    tmp = asInt8(tmp)
+    return tmp
 
 class VideoPlay:
     def __init__(self, src, step=32):
@@ -14,6 +25,7 @@ class VideoPlay:
         self.step = step
         self.dct = DCT(self.step, self.step)
         self.dct_all = None
+        self.base = init_base(self.shape)
 
     @property
     def shape(self):
@@ -30,13 +42,17 @@ class VideoPlay:
             self.dct_all = DCT(H, W)
         while self.src.isOpened():
             ret, frame = self.src.read()
+            alpha = 1
             if ret:
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                thr = 40
-                frame4 = self.dct_all.H_filter(frame, thr)
-                frame2 = self.dct_all.L_filter(frame, thr)#edge_det(frame)
-                frame = np.concatenate([frame, frame2,frame4], axis=1)
-                cv2.imshow('x', frame)
+                a = self.dct_all.inference(frame)
+                b = self.dct_all.inference(self.base)
+                c = a - alpha * b
+                cv2.imshow('y', c)
+                d = self.dct_all.invert(c)
+                d = asInt8(d)
+                new_frame = np.concatenate([frame, d], axis=1)
+                cv2.imshow('x', new_frame)
                 key = cv2.waitKey(30)
                 if key == ord('q'):
                     return 1

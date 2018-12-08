@@ -10,6 +10,14 @@ def asInt8(img):
     img = img.clip(0,255)
     return img.astype('uint8')
 
+def rowDelta(img):
+    img = img.astype(int)
+    a = (img**2).sum(axis=1, keepdims=True)
+    b = img @ img.T
+    c = (a + a.T - 2*b) ** 0.5
+    d = asInt8(c / c.max() * 255)
+    return d
+
 class DCT:
     @timer
     def __init__(self, h, w):
