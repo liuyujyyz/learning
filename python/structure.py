@@ -1,6 +1,53 @@
 import numpy as np
 from decorators import timer
 from tqdm import tqdm
+from geometry import Point, Line, Draw
+
+G = 6.754*10**-11
+K = 9*10**9
+class Particle:
+    def __init__(self, x, y, z, m, e=0, v=(0,0,0)):
+        self.position = Point(x, y, z)
+        self.weight = m
+        self.elec = e
+        self.v = Point(*v)
+
+    def force(self, p):
+        l = Line(self.position, p.position)
+        dist = l.length * 1000
+        direct = self.position - p.position
+        F = G*self.weight * p.weight / dist**2 - K*self.elec * p.elec / dist**2
+        out = (F / dist) * direct 
+        return out
+
+    def update(self, f):
+        self.position = self.position + self.v
+        self.v = self.v + (1/self.weight/1000) * f
+
+class Physics:
+    def __init__(self, plist):
+        self.plist = plist
+        self.time = 0
+
+    def iterate(self):
+        q = Draw()
+        while True:
+            forces = []
+            for itemA in self.plist:
+                force = Point(0, 0, 0)
+                for itemB in self.plist:
+                    if itemB == itemA:
+                        continue
+                    delta = itemB.force(itemA)
+                    force = force + delta
+                forces.append(force)
+            for i in range(len(forces)):
+                self.plist[i].update(forces[i])
+                q.put_circle(self.plist[i].position.x, self.plist[i].position.y, self.plist[i].position.z)
+            h = q.render()
+            if h:
+                return
+            q.clear()
 
 class UnionFind:
     def __init__(self, n):

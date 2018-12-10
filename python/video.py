@@ -45,13 +45,14 @@ class VideoPlay:
             alpha = 1
             if ret:
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                a = self.dct_all.inference(frame)
-                b = self.dct_all.inference(self.base)
-                c = a - alpha * b
-                cv2.imshow('y', c)
-                d = self.dct_all.invert(c)
-                d = asInt8(d)
-                new_frame = np.concatenate([frame, d], axis=1)
+                #a = self.dct_all.inference(frame)
+                #b = self.dct_all.inference(self.base)
+                #c = a - alpha * b
+                #cv2.imshow('y', c)
+                #d = self.dct_all.invert(c)
+                #d = asInt8(d)
+                #new_frame = np.concatenate([frame, d], axis=1)
+                new_frame = self.dct_all.H_filter(frame, np.random.randint(40,180))
                 cv2.imshow('x', new_frame)
                 key = cv2.waitKey(30)
                 if key == ord('q'):
