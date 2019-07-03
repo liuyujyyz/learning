@@ -1,5 +1,5 @@
 import cv2
-from image_process import edge_det, DCT, rowDelta 
+from image_process import edge_det, DCT, rowDelta, LBP 
 import numpy as np 
 import os
 
@@ -25,7 +25,7 @@ class VideoPlay:
         self.step = step
         self.dct = DCT(self.step, self.step)
         self.dct_all = None
-        self.base = init_base(self.shape)
+        #self.base = init_base(self.shape)
 
     @property
     def shape(self):
@@ -35,25 +35,39 @@ class VideoPlay:
         else:
             return None
 
+    def play_LBP(self):
+        H, W = self.shape
+        print(H, W)
+        dct = DCT(h=H,w=W)
+        while self.src.isOpened():
+            ret, frame = self.src.read()
+            if ret:
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                img = LBP(frame)
+                img = dct.H_filter(img, 150) 
+                img = np.concatenate([img, frame], axis=1) 
+                cv2.imshow('x', img)
+                key = cv2.waitKey(30)
+                if key == ord('q'):
+                    return 1
+        return -1
+
     def play_all(self):
         H, W = self.shape
         print(H, W)
         if self.dct_all is None:
             self.dct_all = DCT(H, W)
+        tmp = []
         while self.src.isOpened():
             ret, frame = self.src.read()
             alpha = 1
             if ret:
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                #a = self.dct_all.inference(frame)
-                #b = self.dct_all.inference(self.base)
-                #c = a - alpha * b
-                #cv2.imshow('y', c)
-                #d = self.dct_all.invert(c)
-                #d = asInt8(d)
-                #new_frame = np.concatenate([frame, d], axis=1)
-                new_frame = self.dct_all.H_filter(frame, np.random.randint(40,180))
-                cv2.imshow('x', new_frame)
+                #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                tmp.append(frame)
+                if len(tmp) > 5:
+                    tmp.pop(0)
+                img = np.array(tmp).mean(axis=0).astype('uint8')
+                cv2.imshow('x', img)
                 key = cv2.waitKey(30)
                 if key == ord('q'):
                     return 1
@@ -114,4 +128,4 @@ class VideoPlay:
 
 if __name__ == '__main__':
     play = VideoPlay(0, 160)
-    L = play.play_all()
+    L = play.play_LBP()

@@ -115,8 +115,9 @@ class WordGen:
 
 def main():
     gen = WordGen(version=2)
-    for i in range(26):
-        print(gen.getWord(min(10, np.random.randint(i//2,2*i+1)), start = i))
+    for i in range(100):
+        w = gen.getWord(10, 0)
+        print(w)
 
 if __name__ == '__main__':
     main()

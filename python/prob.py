@@ -2,6 +2,20 @@ import numpy as np
 from time import time
 from decorators import timer
 
+class Markov():
+    def __init__(self, state_value, transfer_matrix, init_state):
+        self.numStates = transfer_matrix.shape[0]
+        assert 0 <= init_state and init_state < self.numStates, (init_state, self.numStates)
+        assert self.numStates == len(state_value), (self.numStates, len(state_value))
+        self.state = init_state
+        self.values = state_value
+        self.transferDistribution = [Distribution(list(range(self.numStates)), transfer_matrix[i]) for i in range(self.numStates)]
+
+    def next(self):
+        dist = self.transferDistribution[self.state]
+        self.state = dist.sample_one()
+        return self.values[self.state]
+
 class Distribution():
     def __init__(self, supp, prob):
         assert len(supp) == len(prob), 'not same length'
@@ -32,6 +46,9 @@ class Distribution():
         tmp = self._exp()
         self.var = (((self.supp - tmp)**2)*self.prob).sum()
         return self.var
+
+    def next(self):
+        return self.sample_one()
 
     def sample_one(self):
         #re = np.random.choice(range(self.length), p=self.prob)

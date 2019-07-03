@@ -14,7 +14,7 @@ class Particle:
 
     def force(self, p):
         l = Line(self.position, p.position)
-        dist = l.length * 1000
+        dist = l.length * 1000 * 10**6
         direct = self.position - p.position
         F = G*self.weight * p.weight / dist**2 - K*self.elec * p.elec / dist**2
         out = (F / dist) * direct 
@@ -22,14 +22,14 @@ class Particle:
 
     def update(self, f):
         self.position = self.position + self.v
-        self.v = self.v + (1/self.weight/1000) * f
+        self.v = self.v + (1/self.weight/1000*10**6) * f
 
 class Physics:
     def __init__(self, plist):
         self.plist = plist
         self.time = 0
 
-    def iterate(self):
+    def iterate(self, duration=50):
         q = Draw()
         while True:
             forces = []
@@ -43,8 +43,8 @@ class Physics:
                 forces.append(force)
             for i in range(len(forces)):
                 self.plist[i].update(forces[i])
-                q.put_circle(self.plist[i].position.x, self.plist[i].position.y, self.plist[i].position.z)
-            h = q.render()
+                q.put_circle(self.plist[i].position.x/10, self.plist[i].position.y/10, self.plist[i].position.z/10)
+            h = q.render(duration)
             if h:
                 return
             q.clear()

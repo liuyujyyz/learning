@@ -71,5 +71,34 @@ def choose(a, b):
         re = re // (i + 1)
     return re
 
+def count2(n, x):
+    c = 0
+    base = str(x)
+    for item in range(n):
+        if item % 2 == 1:
+            continue
+        s = str(item + 1)
+        for i in s:
+            if i == base:
+                c += 1
+    return c
+
+@timer
+def count3(n, x):
+    if n < 100:
+        return count2(n, x)
+    strnum = str(n)
+    L = len(strnum)
+    head = int(strnum[0])
+    tail = int(strnum[1:])
+    tmp0 = count3(tail, x) + (tail + 1) // 2 * (head == x)
+    tmp1 = head * count3(10**(L-1) - 1, x)
+    if x < head:
+        out = 10**(L-1) // 2
+    else:
+        out = 0
+    return out + tmp0 + tmp1
+
+
 if __name__ == '__main__':
-    pass
+    print(count3(2147483647, 3))

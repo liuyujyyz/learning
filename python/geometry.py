@@ -13,9 +13,9 @@ class Draw:
         except:
             print(h)
 
-    def render(self):
+    def render(self, duration=50):
         cv2.imshow('x', self.img)
-        key = cv2.waitKey(50)
+        key = cv2.waitKey(duration)
         if key == ord('q'):
             return True
         return False

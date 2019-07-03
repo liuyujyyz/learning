@@ -4,7 +4,69 @@ import sys
 import os
 from tqdm import tqdm
 from functools import reduce
+import itertools
 from decorators import timer
+kernel = np.random.uniform(0.09, 0.11, (10, 10))
+kernel = kernel / kernel.sum()
+H = 640
+W = 480
+
+idx = np.array(list(itertools.product(range(H), range(W)))).reshape(H, W, 2)
+@timer
+def frosted_glass_gen(src, scale=5):
+    kernel = np.random.uniform(0.09, 0.11, (scale, scale))
+    kernel = kernel / kernel.sum()
+    rows, cols, _ = src.shape
+    assert rows == H and cols == W
+    offsets = np.random.randint(3, 6)
+    random_num = 0
+    off = np.random.randint(0, offsets, (rows, cols, 1))
+    target = idx + off
+    dst = np.zeros((H, W, 3), dtype='uint8')
+    for y in range(rows-offsets):
+        for x in range(cols-offsets):
+            dst[y, x] = src[target[y,x,0], target[y,x,1]]
+    dst = cv2.filter2D(dst, -1, kernel)
+    dst = cv2.filter2D(dst, -1, kernel)
+    return dst
+
+@timer
+def fgg_v2(src, scale=5):
+    rows, cols, _ = src.shape
+    assert rows == H and cols == W
+    offsets = np.random.randint(3, 6)
+    random_num = 0
+    off = np.random.randint(0, offsets, (rows, cols, 2))
+    target = (idx + off).astype('float32')
+    dst = np.zeros((H, W, 3), dtype='uint8')
+    h = H-offsets
+    w = W-offsets
+    base = np.random.randint(100, 130, (H,W,3), dtype='uint8')
+    dst[:h, :w] = cv2.remap(src, target[:h,:w,1], target[:h,:w,0], cv2.INTER_LINEAR)
+    alpha = np.random.uniform(0.5, 0.7)
+    dst = cv2.filter2D(dst, -1, kernel)
+    dst = cv2.filter2D(dst, -1, kernel)
+    dst = asInt8(alpha * base + (1-alpha)*dst)
+    return dst
+
+@timer
+def fgg_v3(src, scale=5):
+    rows, cols, _ = src.shape
+    assert rows == H and cols == W
+    offsets = np.random.randint(3, 6)
+    random_num = 0
+    off = np.random.randint(0, offsets, (rows, cols, 1))
+    target = (idx + off).astype('float32')
+    dst = np.zeros((H, W, 3), dtype='uint8')
+    h = H-offsets
+    w = W-offsets
+    dst[:h, :w] = cv2.remap(src, target[:h,:w,1], target[:h,:w,0], cv2.INTER_LINEAR)
+    base = np.random.randint(100, 130, (H,W,3), dtype='uint8')
+    alpha = np.random.uniform(0.5, 0.6)
+    dst = cv2.filter2D(dst, -1, kernel)
+    dst = cv2.filter2D(dst, -1, kernel)
+    dst = asInt8(alpha * base + (1-alpha)*dst)
+    return dst
 
 def asInt8(img):
     img = img.clip(0,255)
@@ -77,6 +139,29 @@ def YUV2PNG(h, w, msg):
     img=img.transpose((1,0,2))[::-1].copy()
     return img
 
+@timer
+def LBP(img):
+    if len(img.shape) == 3:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    H, W = img.shape
+    re = np.zeros(img.shape)
+    z1 = np.zeros((H, 1))
+    z2 = np.zeros((1, W))
+    
+    a1 = (np.concatenate([z2, np.concatenate([z1[1:], img[:H-1,:W-1]], axis=1)], axis=0) >= img)*1
+    a2 = (np.concatenate([z2, img[:H-1]], axis=0) >= img)*2
+    a3 = (np.concatenate([z2, np.concatenate([img[:H-1, 1:], z1[1:]], axis=1)], axis=0) >= img)*4
+    a4 = (np.concatenate([img[:,1:], z1], axis=1) >= img)*8
+    a5 = (np.concatenate([np.concatenate([img[1:,1:], z1[1:]], axis=1), z2], axis=0) >= img)*16
+    a6 = (np.concatenate([img[1:], z2], axis=0) >= img)*32
+    a7 = (np.concatenate([np.concatenate([img[1:, :W-1], z1[1:]], axis=1), z2], axis=0) >= img)*64
+    a8 = (np.concatenate([z1, img[:,:W-1]], axis=1) >= img)*128
+
+    re = a1+a2+a3+a4+a5+a6+a7+a8
+    return re.astype('uint8')
+
+
+@timer
 def edge_det(img, norm=False):
     if len(img.shape) == 3:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -103,18 +188,43 @@ def edge_det(img, norm=False):
     re = (re / re.max()) * 255
     return re.astype('uint8')
 
-def blur(img):
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img = np.array(img, dtype='int')
-    re = np.zeros(img.shape)
-    for i in range(img.shape[0]):
-        for j in range(img.shape[1]):
-            tmp = np.abs(img[max(i-5,0):i+6, max(j-5,0):j+6])
-            re[i][j] = tmp.mean()
-    return re
+@timer
+def blur(img, kernel_size=5):
+    if img.ndim == 3:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    kernel = np.ones((kernel_size, kernel_size)) / (kernel_size**2)
+    dst_img = cv2.filter2D(img, -1, kernel)
+    return dst_img
 
+@timer
 def gamma(img, g):
-    return (((img.astype('float32')/256.0)**g)*256.0).astype('uint8')
+    return adjust_gamma(img, gamma=g)
+
+@timer
+def adjust_gamma(image, gamma=1.0):
+    # build a lookup table mapping the pixel values [0, 255] to
+    # their adjusted gamma values
+    invGamma = gamma
+    table = np.array([((i / 255.0) ** invGamma) * 255
+            for i in np.arange(0, 256)]).astype("uint8")
+ 
+    # apply gamma correction using the lookup table
+    return cv2.LUT(image, table)
+
+@timer
+def lighter(img):
+    h, w = img.shape[:2]
+    mean = img.mean()
+    h = np.log(mean) / np.log(128)
+    return adjust_gamma(img, h)
+
+@timer
+def add_lines(img, width=10):
+    pattern = np.array(range(img.shape[1]))
+    pattern = np.cos(pattern / (width*4)*2*np.pi) * 20
+    pattern = pattern.reshape((1, img.shape[1], ) + (1,)*(img.ndim-2))
+    img = np.clip(img + pattern, 0, 255).astype('uint8')
+    return img
 
 def convert(h, w, msg):
     img_y=np.fromstring(msg[:h*w],dtype='uint8').reshape((h,w))
@@ -151,9 +261,78 @@ def convert_dir(argv):
             sys.stderr.write("Failed to handle {}\n".format(image_file))
             sys.stderr.write("Exception: {}\n".format(e))
 
+class StripeMask:
+    def __init__(self, range_angle=None, range_size=None, range_rate=None):
+        self.range_angle = self.float2range_list(range_angle or [-15, 15])
+        self.range_size = self.float2range_list(range_size or [20, 20+1e-9])
+        self.range_rate = self.float2range_list(range_rate or [0.3, 0.3+1e-9])
+        self.shift = [0, 2*np.pi]
+
+    def __call__(self, img):
+        n_stripe = self.gen_random(self.range_size)
+        angle = self.gen_random(self.range_angle)/180*np.pi
+        rate = self.gen_random(self.range_rate)
+        shift = self.gen_random(self.shift)
+        deeps = self.gen_mask_angle(img, n_stripe, angle, shift, rate)
+        img = np.clip(img * deeps, 0, 255).astype(img.dtype)
+
+        return img
+
+    def gen_mask_angle(self, img, n_stripe, angle=0, shift=0, rate=0.3):
+        assert 2 <= len(img.shape) <= 3
+        len_shape = len(img.shape)
+        x = np.linspace(0, 2*np.pi*n_stripe, img.shape[1])
+        y = np.linspace(0, 2*np.pi*n_stripe, img.shape[0])
+        X, Y = np.meshgrid(x, y)
+        shape = X.shape
+
+        deeps = (np.sin((np.cos(angle)*X+np.sin(angle)*Y+shift)) + 1)/2*rate+(1-rate)
+        if len_shape == 3:
+            deeps = deeps.reshape(*img.shape[:2], 1)
+        return deeps
+
+    @staticmethod
+    def float2range_list(x):
+        x = [x, x+1e-9] if isinstance(x, int) or isinstance(x, float) else x
+        assert x[1] > x[0]
+        return x
+
+    def gen_random(self, range_x):
+        return np.random.uniform(range_x[0], range_x[1])
+
+stripe_range_angle, stripe_range_size, stripe_range_rate = [-15, 15], [10, 30], [0.05, 0.2]
+stripe_mask_aug = StripeMask(stripe_range_angle, stripe_range_size, stripe_range_rate)
+
+@timer
+def add_lines_v2(img):
+    img_new = stripe_mask_aug(img)
+    return img_new
+
 if __name__ == '__main__':
-    a = DCT(480, 640)
-    b = a.inference(np.ones((480, 640)))
-    c = a.invert(b)
-    from IPython import embed
-    embed()
+    count = 0
+    def cvt_img(img, name):
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        cv2.imwrite('%s.png'%name, img)
+        img = add_lines(img, width = 10 - count)
+        cv2.imwrite('%s_2.png'%name, img)
+        img = blur(img, kernel_size=10)
+        cv2.imwrite('%s_3.png'%name, img)
+        cv2.imshow('x', img)
+        cv2.waitKey(0)
+
+    img = cv2.imread('/home/liuyu/Pictures/ckq_wyz/compareFailed/09-09-20_29_43.187.nv21.640.480.png')
+    #img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    tmp = add_lines_v2(img)
+    cv2.imshow('x', tmp)
+    cv2.waitKey(0)
+
+    tmp = add_lines(img)
+    cv2.imshow('y', tmp)
+    cv2.waitKey(0)
+
+    exit(0)
+    cvt_img(img, 'test')
+    count +=1 
+    img = cv2.imread('/home/liuyu/Pictures/ckq_wyz/compareFailed/09-09-20_29_58.806.nv21.640.480.png')
+    cvt_img(img, 'test2')
