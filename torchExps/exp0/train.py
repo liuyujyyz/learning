@@ -44,12 +44,12 @@ def main():
     device = torch.device('cpu')
     model = Net().to(device)
     optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.8, weight_decay=0.01)
-    schLR = StepLR(optimizer, step_size=1, gamma=0.99)
+    schLR = StepLR(optimizer, step_size=1, gamma=0.9)
     dp = DataProvider2()
     from utils import GIFWriter
     U = GIFWriter()
 
-    for epoch in tqdm(range(20)):
+    for epoch in tqdm(range(100)):
         train(model, dp, optimizer, epoch, device)
         schLR.step()
         img = test(model, epoch, dp)

@@ -35,5 +35,5 @@ class DataProvider2():
         r = np.random.uniform(0, 1, (batch, 1))
         theta = np.random.uniform(0,100, (batch, 1))
         point = np.concatenate([r*np.cos(theta), r*np.sin(theta)], axis=1)
-        label = (r > 0.2)
+        label = (r > self.r1)*(r < self.r2)*(np.cos(theta)>0)*(np.sin(theta)>0)
         return point, label[:,0]
