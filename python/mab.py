@@ -3,11 +3,11 @@ from prob import Distribution, Markov
 from decorators import timer
 
 def softmax(L):
-    a = np.array(L)
+    a = np.array(L, dtype='float32')
     a = a - a.max()
     a = np.exp(a)
     a = a / a.sum()
-    return list(a)
+    return a
 
 class MAB:
     def __init__(self, arm_list):

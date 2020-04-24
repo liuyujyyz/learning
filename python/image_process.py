@@ -6,12 +6,15 @@ from tqdm import tqdm
 from functools import reduce
 import itertools
 from decorators import timer
+from mab import softmax
+
 kernel = np.random.uniform(0.09, 0.11, (10, 10))
 kernel = kernel / kernel.sum()
 H = 640
 W = 480
 
 idx = np.array(list(itertools.product(range(H), range(W)))).reshape(H, W, 2)
+
 @timer
 def frosted_glass_gen(src, scale=5):
     kernel = np.random.uniform(0.09, 0.11, (scale, scale))
@@ -308,31 +311,68 @@ def add_lines_v2(img):
     img_new = stripe_mask_aug(img)
     return img_new
 
+def calc_entropy(patch):
+    patch = softmax(patch.reshape(-1))
+    u = np.ones(patch.shape)
+    u = u / u.sum()
+    entropy = (patch*np.log(patch+1e-16)).sum() / (u*np.log(u)).sum()
+    if np.isnan(entropy):
+        print(patch.max(), patch.min())
+    return entropy
+
+def find_max_entropy(img, patchsize=64, step=8):
+    h, w = img.shape[:2]
+    max_entropy = 1e8
+    best_patch = None
+
+    for i in range(0, h - patchsize, max(1, patchsize//10)):
+        for j in range(0, w - patchsize, max(1, patchsize//10)):
+            raw_patch = img[i:i+patchsize, j:j+patchsize]
+            entropy = []
+            for pi in range(0,patchsize-step,step):
+                for pj in range(0,patchsize-step,step):
+                    entropy.append(calc_entropy(raw_patch[pi:pi+step, pj:pj+step]))
+            #tmp_img = cv2.resize(raw_patch, (256, 256))
+            #print(np.mean(entropy), np.std(entropy))
+            entropy = np.mean(entropy)
+            #cv2.imshow('x', tmp_img)
+            #cv2.waitKey(0)
+            if entropy < max_entropy:
+                max_entropy = entropy
+                best_patch = raw_patch
+    return best_patch, max_entropy
+
+
 if __name__ == '__main__':
-    count = 0
-    def cvt_img(img, name):
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        cv2.imwrite('%s.png'%name, img)
-        img = add_lines(img, width = 10 - count)
-        cv2.imwrite('%s_2.png'%name, img)
-        img = blur(img, kernel_size=10)
-        cv2.imwrite('%s_3.png'%name, img)
-        cv2.imshow('x', img)
-        cv2.waitKey(0)
-
     img = cv2.imread('/home/liuyu/Pictures/ckq_wyz/compareFailed/09-09-20_29_43.187.nv21.640.480.png')
-    #img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    tmp = add_lines_v2(img)
-    cv2.imshow('x', tmp)
-    cv2.waitKey(0)
-
-    tmp = add_lines(img)
-    cv2.imshow('y', tmp)
-    cv2.waitKey(0)
-
+    img = cv2.imread('/home/liuyu/Desktop/248d3e3968789de4a462071e4648658f7d36be81.png')
+    h, w = img.shape[:2]
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    out = []
+    entropy_list = []
+    for r in range(160, min(h,w), 16):
+        patch, entropy = find_max_entropy(img, patchsize=r, step=16)
+        print(patch.shape, entropy)
+        out.append(patch)
+        entropy_list.append(entropy)
+    for i in range(len(out)):
+        if (i>0):
+            A=(entropy_list[i-1]<entropy_list[i]) 
+        else:
+            A = True
+        if (i<len(patch)-1):
+            B = entropy_list[i+1]<entropy_list[i] 
+        else:
+            B = True
+        if A and B:
+            patch = out[i]
+            patch = cv2.resize(patch, (256, 256))
+            cv2.imshow('x', patch)
+            cv2.waitKey(0)
     exit(0)
-    cvt_img(img, 'test')
-    count +=1 
     img = cv2.imread('/home/liuyu/Pictures/ckq_wyz/compareFailed/09-09-20_29_58.806.nv21.640.480.png')
-    cvt_img(img, 'test2')
+    patch, entropy = find_max_entropy(img, patchsize=256)
+    print(patch.shape, entropy)
+    patch = cv2.resize(patch, (256, 256))
+    cv2.imshow('x', patch)
+    cv2.waitKey(0)

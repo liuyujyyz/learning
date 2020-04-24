@@ -17,8 +17,7 @@ class Numbers:
         free = np.zeros((n-self.maximum,), dtype='uint8') # 0 - max+1, n-max-1 - n
         for p in self.primes:
             st = (self.maximum // p + 1) * p
-            for i in range(st, n+1, p):
-                free[i-(self.maximum+1)] = 1
+            free[st-self.maximum-1:n-self.maximum:p] = 1
         idx = 0
         while idx < n-self.maximum:
             if free[idx]:
@@ -26,8 +25,7 @@ class Numbers:
                 continue
             p = idx + self.maximum + 1
             self.primes.append(p)
-            for i in range(idx, n-self.maximum, p):
-                free[i] = 1
+            free[idx:n-self.maximum:p] = 1
         self.maximum = n
         return
 
