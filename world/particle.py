@@ -1,7 +1,6 @@
 from constants import *
 from IPython import embed
 
-N = kg * m / (s*s)
 
 def force(p1, p2):
     direction = p2.position - p1.position
@@ -12,12 +11,14 @@ def force(p1, p2):
     outF = direction.orient()*F 
     return outF
 
+
 def forceUnion(p, pset):
     f = PhyVector([0*N, 0*N, 0*N])
     for item in pset:
         tmpf = force(p, item)
         f += tmpf
     return f 
+
 
 class Particle:
     def __init__(self, position, velocity, mass, charge):

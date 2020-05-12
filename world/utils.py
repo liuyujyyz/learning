@@ -1,5 +1,7 @@
 import numpy as np
 import imageio
+from constants import *
+
 
 def same(a, b):
     return True
@@ -8,6 +10,7 @@ def same(a, b):
     if isinstance(a, np.ndarray):
         return (((a-b)**2).sum() < 1e-6)
     return ((a-b)**2 < 1e-6)
+
 
 class GIFWriter:
     def __init__(self):
