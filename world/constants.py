@@ -90,6 +90,13 @@ class PhyVector(PhyUnit):
             assert same(x.dimension, y.dimension) and same(x.dimension, z.dimension)
             super().__init__([x.value, y.value, z.value], x.dimension)
 
+    def __or__(self, rhs):
+        l, m, n = self.value 
+        o, p, q = rhs.value
+        value = np.array([m*q-n*p, n*o-l*q, l*p-m*o])
+        dimension = self.dimension + rhs.dimension
+        return PhyVector(value, dimension)
+
     def __str__(self):
         re = '[%.6g, %.6g, %.6g]'%(self.value[0], self.value[1], self.value[2])
         vp = ''
@@ -171,7 +178,10 @@ if __name__ == '__main__':
     e0 = 1e9 * Conste
     r = m
     F1 = ConstG*m1*m2/(r**2)
+    F11 = PhyVector([F1, F1, F1])
     F2 = ConstK*(e1-e0)*e2/(r*r)
+    F22 = PhyVector([F2, F2, -F2])
     L = F1 - F2
-    print(J, V)
+    M = F11 | F22
+    print(M)
 

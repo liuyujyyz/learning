@@ -1,7 +1,5 @@
 import numpy as np
 import imageio
-from constants import *
-
 
 def same(a, b):
     return True
